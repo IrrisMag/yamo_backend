@@ -1,0 +1,1137 @@
+openapi: 3.0.3
+info:
+  title: Yamo Laundry API
+  version: 1.0.1
+  description: >-
+    REST API for the Yamo laundry platform. Includes customer, orders,
+    tasks, billing, geo, notifications, livreur management and live tracking.
+servers:
+  - url: http://localhost:8080
+    description: Local
+  - url: https://api.yamo.example
+    description: Production
+tags:
+  - name: Auth
+  - name: Customers
+  - name: Addresses
+  - name: Orders
+  - name: Tasks
+  - name: Livreurs
+  - name: Tracking
+  - name: Billing
+  - name: Geo
+  - name: Notifications
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+              required: [username, password]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user:
+                    type: object
+                    properties:
+                      id: { type: integer, format: int64 }
+                      username: { type: string }
+                      role: { $ref: '#/components/schemas/Role' }
+                      customerId: { type: integer, format: int64, nullable: true }
+                      livreurId: { type: integer, format: int64, nullable: true }
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Create user (bootstrap/admin only in production)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+                role: { $ref: '#/components/schemas/Role' }
+                customerId: { type: integer, format: int64, nullable: true }
+                livreurId: { type: integer, format: int64, nullable: true }
+              required: [username, password]
+      responses:
+        '200': { description: Created }
+  /api/customers:
+    get:
+      tags: [Customers]
+      summary: List customers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+    post:
+      tags: [Customers]
+      summary: Create customer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+  /api/customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404': { description: Not found }
+    delete:
+      tags: [Customers]
+      summary: Delete customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: No content }
+  /api/customers/{customerId}/addresses:
+    get:
+      tags: [Addresses]
+      summary: List addresses for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+    post:
+      tags: [Addresses]
+      summary: Add address for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Address' }
+  /api/addresses/{id}:
+    delete:
+      tags: [Addresses]
+      summary: Delete address
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: No content }
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: List orders by customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Order' }
+    post:
+      tags: [Orders]
+      summary: Create order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+  /api/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { description: Not found }
+  /api/orders/{id}/status:
+    post:
+      tags: [Orders]
+      summary: Update order status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StatusUpdateRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+  /api/orders/{id}/pickup:
+    post:
+      tags: [Orders]
+      summary: Schedule pickup
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PickupRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pickup' }
+  /api/orders/{id}/delivery:
+    post:
+      tags: [Orders]
+      summary: Schedule delivery
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeliveryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delivery' }
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks in a time window
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+    post:
+      tags: [Tasks]
+      summary: Create task
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customerId
+          required: false
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: orderId
+          required: false
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Task' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+  /api/tasks/{taskId}/assign-livreur:
+    post:
+      tags: [Tasks]
+      summary: Assign livreur to task
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Livreur' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+  /api/tasks/{taskId}/status:
+    post:
+      tags: [Tasks]
+      summary: Update task status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: status
+          required: true
+          schema: { $ref: '#/components/schemas/TaskStatus' }
+        - in: query
+          name: notes
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+  /api/tasks/livreur/{livreurId}:
+    get:
+      tags: [Tasks]
+      summary: List tasks for a livreur within a time window
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: livreurId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+  /api/tasks/customer/{customerId}:
+    get:
+      tags: [Tasks]
+      summary: List tasks for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+  /api/livreurs:
+    get:
+      tags: [Livreurs]
+      summary: List livreurs
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: active
+          required: false
+          schema: { type: boolean }
+        - in: query
+          name: vehicleType
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Livreur' }
+    post:
+      tags: [Livreurs]
+      summary: Create livreur
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Livreur' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Livreur' }
+  /api/livreurs/{id}:
+    get:
+      tags: [Livreurs]
+      summary: Get livreur
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Livreur' } } } }
+        '404': { description: Not found }
+    put:
+      tags: [Livreurs]
+      summary: Update livreur
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Livreur' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Livreur' } } } }
+    delete:
+      tags: [Livreurs]
+      summary: Delete livreur
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: No content }
+  /api/livreurs/{id}/location:
+    post:
+      tags: [Tracking]
+      summary: Post livreur location update
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LocationUpdate' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LivreurLocation' } } } }
+  /api/livreurs/{id}/location/recent:
+    get:
+      tags: [Tracking]
+      summary: Get recent livreur locations
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: minutes
+          required: false
+          schema: { type: integer, format: int64, default: 30 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LivreurLocation' }
+  /api/orders/{orderId}/livreur/latest:
+    get:
+      tags: [Tracking]
+      summary: Get latest location for order's livreur
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LivreurLocation' } } } }
+        '204': { description: No content }
+  /api/orders/{orderId}/livreur/stream:
+    get:
+      tags: [Tracking]
+      summary: Subscribe to SSE location stream for order
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/billing/orders/{orderId}/invoice:
+    post:
+      tags: [Billing]
+      summary: Create invoice for order
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: dueDate
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+  /api/billing/customers/{customerId}/invoices:
+    get:
+      tags: [Billing]
+      summary: List invoices for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Invoice' } } } } }
+  /api/billing/customers/{customerId}/payments:
+    get:
+      tags: [Billing]
+      summary: List payments for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Payment' } } } } }
+  /api/billing/payments:
+    post:
+      tags: [Billing]
+      summary: Record payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: amount
+          required: true
+          schema: { type: number, format: double }
+        - in: query
+          name: method
+          required: true
+          schema: { $ref: '#/components/schemas/PaymentMethod' }
+        - in: query
+          name: reference
+          required: false
+          schema: { type: string }
+        - in: query
+          name: invoiceNumber
+          required: false
+          schema: { type: string }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Payment' } } } }
+  /api/billing/customers/{customerId}/balance:
+    get:
+      tags: [Billing]
+      summary: Get customer balance and unpaid invoices
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customerId: { type: integer, format: int64 }
+                  creditBalance: { type: number, format: double }
+                  totalUnpaid: { type: number, format: double }
+                  unpaidInvoices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        invoiceNumber: { type: string }
+                        issueDate: { type: string, format: date-time }
+                        dueDate: { type: string, format: date-time }
+                        status: { $ref: '#/components/schemas/InvoiceStatus' }
+                        totalAmount: { type: number, format: double }
+                        paidAmount: { type: number, format: double }
+                        balanceAmount: { type: number, format: double }
+  /api/billing/invoices/{invoiceNumber}/pdf:
+    post:
+      tags: [Billing]
+      summary: Generate invoice PDF and return its URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: invoiceNumber
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoiceNumber: { type: string }
+                  file: { type: string }
+                  url: { type: string, format: uri }
+  /api/billing/invoices/pdf/{invoiceNumber}:
+    get:
+      tags: [Billing]
+      summary: Download invoice PDF
+      parameters:
+        - in: path
+          name: invoiceNumber
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: PDF content
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /api/billing/invoices/{invoiceNumber}/send-whatsapp:
+    post:
+      tags: [Billing]
+      summary: Send invoice via WhatsApp document link
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: invoiceNumber
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/geo/coverage:
+    post:
+      tags: [Geo]
+      summary: Check coverage and distance to center
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LatLng' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverageResult' }
+  /api/geo/estimate:
+    post:
+      tags: [Geo]
+      summary: Estimate distance, duration and fee between two points
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateReq' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstimateResult' }
+  /api/notifications/whatsapp/test:
+    post:
+      tags: [Notifications]
+      summary: Send a WhatsApp text message (test)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to: { type: string, description: E.164 number }
+                text: { type: string }
+      responses:
+        '200': { description: OK }
+  /api/notifications/whatsapp/webhook:
+    get:
+      tags: [Notifications]
+      summary: Verify WhatsApp webhook
+      parameters:
+        - in: query
+          name: hub.mode
+          schema: { type: string }
+        - in: query
+          name: hub.verify_token
+          schema: { type: string }
+        - in: query
+          name: hub.challenge
+          schema: { type: string }
+      responses:
+        '200': { description: Challenge echoed }
+        '403': { description: Forbidden }
+    post:
+      tags: [Notifications]
+      summary: Receive WhatsApp webhook events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: OK }
+  /api/notifications/whatsapp/campaign:
+    post:
+      tags: [Notifications]
+      summary: Send WhatsApp campaign to a targeted segment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignReq'
+      responses:
+        '200': { description: OK }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Role:
+      type: string
+      enum: [CUSTOMER, LIVREUR, ADMIN]
+    Customer:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        code: { type: string }
+        name: { type: string }
+        surname: { type: string }
+        phone: { type: string }
+        whatsappPhone: { type: string }
+        email: { type: string, format: email }
+        address1: { type: string }
+        address2: { type: string }
+        nui: { type: string }
+        rccm: { type: string }
+        companyName: { type: string }
+        segment: { type: string }
+        discountPercentage: { type: number, format: double }
+        creditBalance: { type: number, format: double }
+    Address:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        customer: { $ref: '#/components/schemas/CustomerRef' }
+        name: { type: string }
+        district: { $ref: '#/components/schemas/District' }
+        street: { type: string }
+        buildingNumber: { type: string }
+        apartmentNumber: { type: string }
+        additionalInstructions: { type: string }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        primary: { type: boolean }
+    CustomerRef:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+    District:
+      type: string
+      description: Named district enumeration
+    Order:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        customer: { $ref: '#/components/schemas/CustomerRef' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderItem' }
+        pickup: { $ref: '#/components/schemas/Pickup' }
+        delivery: { $ref: '#/components/schemas/Delivery' }
+        status: { type: string }
+        totalAmount: { type: number, format: double }
+        discountAmount: { type: number, format: double }
+        createdAt: { type: string, format: date-time }
+    OrderItem:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        orderId: { type: integer, format: int64 }
+        itemType: { type: string }
+        quantity: { type: integer }
+        pricePerUnit: { type: number, format: double }
+        specialInstructions: { type: string }
+    OrderRequest:
+      type: object
+      required: [customerId]
+      properties:
+        customerId: { type: integer, format: int64 }
+        promoCode: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderItemRequest' }
+    OrderItemRequest:
+      type: object
+      properties:
+        itemType: { type: string }
+        quantity: { type: integer }
+        pricePerUnit: { type: number, format: double }
+        specialInstructions: { type: string }
+    StatusUpdateRequest:
+      type: object
+      properties:
+        status: { type: string }
+    Pickup:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        orderId: { type: integer, format: int64 }
+        contactName: { type: string }
+        contactPhone: { type: string }
+        address: { type: string }
+        livreur: { $ref: '#/components/schemas/LivreurRef' }
+        scheduledDate: { type: string, format: date-time }
+        actualDate: { type: string, format: date-time }
+        status: { type: string }
+    Delivery:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        orderId: { type: integer, format: int64 }
+        contactName: { type: string }
+        contactPhone: { type: string }
+        address: { type: string }
+        livreur: { $ref: '#/components/schemas/LivreurRef' }
+        scheduledDate: { type: string, format: date-time }
+        actualDate: { type: string, format: date-time }
+        status: { type: string }
+    PickupRequest:
+      type: object
+      properties:
+        contactName: { type: string }
+        contactPhone: { type: string }
+        address: { type: string }
+        scheduledDate: { type: string, format: date-time }
+    DeliveryRequest:
+      type: object
+      properties:
+        contactName: { type: string }
+        contactPhone: { type: string }
+        address: { type: string }
+        scheduledDate: { type: string, format: date-time }
+    Task:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/TaskType' }
+        order: { $ref: '#/components/schemas/OrderRef' }
+        customer: { $ref: '#/components/schemas/CustomerRef' }
+        title: { type: string }
+        description: { type: string }
+        addressLine: { type: string }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        scheduledAt: { type: string, format: date-time }
+        remindBeforeMinutes: { type: integer }
+        assigneeLivreur: { $ref: '#/components/schemas/LivreurRef' }
+        participantsPhones:
+          type: array
+          items: { type: string }
+        status: { $ref: '#/components/schemas/TaskStatus' }
+        notes: { type: string }
+        proofPhotoUrl: { type: string }
+        proofSignatureUrl: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TaskType:
+      type: string
+      enum: [PICKUP, DELIVERY, OTHER]
+    TaskStatus:
+      type: string
+      enum: [SCHEDULED, IN_PROGRESS, DONE, CANCELLED, MISSED]
+    OrderRef:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+    Livreur:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        surname: { type: string }
+        nationalId: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        vehicleType: { type: string }
+        vehicleBrand: { type: string }
+        vehicleColor: { type: string }
+        vehicleRegistration: { type: string }
+        photoUrl: { type: string }
+        comment: { type: string }
+        active: { type: boolean }
+    LivreurRef:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+    LivreurLocation:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        livreur: { $ref: '#/components/schemas/LivreurRef' }
+        order: { $ref: '#/components/schemas/OrderRef' }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        heading: { type: number, format: double }
+        speed: { type: number, format: double }
+        capturedAt: { type: string, format: date-time }
+    LocationUpdate:
+      type: object
+      properties:
+        lat: { type: number, format: double }
+        lng: { type: number, format: double }
+        heading: { type: number, format: double }
+        speed: { type: number, format: double }
+        orderId: { type: integer, format: int64 }
+    LatLng:
+      type: object
+      properties:
+        lat: { type: number, format: double }
+        lng: { type: number, format: double }
+    CoverageResult:
+      type: object
+      properties:
+        serviceable: { type: boolean }
+        message: { type: string }
+        distanceFromCenterKm: { type: number, format: double }
+    EstimateReq:
+      type: object
+      properties:
+        originLat: { type: number, format: double }
+        originLng: { type: number, format: double }
+        destLat: { type: number, format: double }
+        destLng: { type: number, format: double }
+    EstimateResult:
+      type: object
+      properties:
+        distanceMeters: { type: integer, format: int64 }
+        durationSeconds: { type: integer, format: int64 }
+        distanceKm: { type: number, format: double }
+        fee: { type: number, format: double }
+    Invoice:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        invoiceNumber: { type: string }
+        issueDate: { type: string, format: date-time }
+        dueDate: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/InvoiceStatus' }
+        totalAmount: { type: number, format: double }
+        paidAmount: { type: number, format: double }
+        balanceAmount: { type: number, format: double }
+        customer: { $ref: '#/components/schemas/CustomerRef' }
+    InvoiceStatus:
+      type: string
+      enum: [DRAFT, ISSUED, PARTIALLY_PAID, PAID, CANCELLED]
+    Payment:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        customer: { $ref: '#/components/schemas/CustomerRef' }
+        invoiceNumber: { type: string }
+        amount: { type: number, format: double }
+        method: { $ref: '#/components/schemas/PaymentMethod' }
+        reference: { type: string }
+        createdAt: { type: string, format: date-time }
+    PaymentMethod:
+      type: string
+      enum: [OM, MOMO, ESPECES, VIREMENT]
+    CampaignReq:
+      type: object
+      properties:
+        minAmount: { type: number, format: double }
+        minOrders: { type: integer, format: int64 }
+        periodDays: { type: integer, format: int32 }
+        inactiveDays: { type: integer, format: int32 }
+        segment: { type: string }
+        text: { type: string }
+        templateName: { type: string }
+        templateLanguage: { type: string }
+        templateParams:
+          type: array
+          items: { type: string }
+security:
+  - bearerAuth: []
