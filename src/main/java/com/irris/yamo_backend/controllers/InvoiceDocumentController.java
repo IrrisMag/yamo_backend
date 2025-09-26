@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/billing/invoices")
 @RequiredArgsConstructor

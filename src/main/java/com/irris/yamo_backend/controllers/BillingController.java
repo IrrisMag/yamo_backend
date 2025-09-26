@@ -14,6 +14,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/billing")
 @RequiredArgsConstructor
